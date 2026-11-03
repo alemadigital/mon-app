@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accueil Famille</title>
+<style>
+  :root { --bg:#0f1b2d; --card:#1c2c45; --text:#f4f1e8; --accent:#e9b949; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui, sans-serif; min-height:100vh; display:flex; flex-direction:column; }
+  header { padding:16px 24px; display:flex; justify-content:space-between; align-items:center; }
+  h1 { margin:0; font-size:1.6rem; }
+  #clock { font-size:1.2rem; opacity:.8; }
+  main { flex:1; display:grid; grid-template-columns:repeat(2,1fr); gap:16px; padding:16px 24px 24px; }
+  .tile { background:var(--card); border:3px solid transparent; border-radius:18px; color:var(--text);
+          font-size:1.6rem; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; }
+  .tile .ico { font-size:3rem; }
+  .tile:focus, .tile:hover { border-color:var(--accent); outline:none; transform:scale(1.02); }
+  #view { display:none; flex:1; padding:16px 24px; }
+  #view.on { display:block; }
+  .back { background:var(--accent); color:#111; border:0; border-radius:10px; padding:10px 18px; font-size:1.1rem; cursor:pointer; }
+  footer { text-align:center; padding:8px; opacity:.6; font-size:.9rem; }
+  @media (max-width:500px){ main{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header><h1>Bienvenue 👋</h1><div id="clock"></div></header>
+
+<main id="home">
+  <button class="tile" data-go="coran"><span class="ico">📖</span>Coran</button>
+  <button class="tile" data-go="nourania"><span class="ico">ا ب ت</span>Nourania</button>
+  <button class="tile" data-go="recettes"><span class="ico">🍲</span>Recettes</button>
+  <button class="tile" data-go="jeux"><span class="ico">🎮</span>Jeux</button>
+</main>
+
+<section id="view">
+  <button class="back" id="back">← Retour (Échap)</button>
+  <h2 id="vtitle"></h2>
+  <p id="vtext"></p>
+</section>
+
+<footer>Flèches pour choisir · Entrée pour ouvrir · Échap pour revenir</footer>
+
+<script>
+const spaces = {
+  coran:    ["📖 Coran", "Lecture, écoute verset par verset et mémorisation — bientôt ici."],
+  nourania: ["ا ب ت Nourania", "Leçons, sons des lettres et exercices — bientôt ici."],
+  recettes: ["🍲 Recettes", "Recettes pas à pas, minuteurs et liste de courses — bientôt ici."],
+  jeux:     ["🎮 Jeux", "Snake, Memory, 2048, quiz… — bientôt ici."]
+};
+const tiles = [...document.querySelectorAll('.tile')];
+const home = document.getElementById('home'), view = document.getElementById('view');
+function open(k){ home.style.display='none'; view.classList.add('on');
+  vtitle.textContent = spaces[k][0]; vtext.textContent = spaces[k][1]; back.focus(); }
+function close(){ view.classList.remove('on'); home.style.display=''; tiles[0].focus(); }
+tiles.forEach(t => t.onclick = () => open(t.dataset.go));
+back.onclick = close;
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') return close();
+  const i = tiles.indexOf(document.activeElement); if (i < 0) return;
+  const cols = getComputedStyle(home).gridTemplateColumns.split(' ').length;
+  const m = {ArrowRight:1, ArrowLeft:-1, ArrowDown:cols, ArrowUp:-cols}[e.key];
+  if (m !== undefined) { e.preventDefault(); tiles[(i + m + tiles.length) % tiles.length].focus(); }
+});
+function tick(){ clock.textContent = new Date().toLocaleString('fr-FR',{weekday:'long',hour:'2-digit',minute:'2-digit'}); }
+tick(); setInterval(tick, 30000);
+tiles[0].focus();
+</script>
+</body>
+</html>
