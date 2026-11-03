@@ -53,7 +53,7 @@ const home = document.getElementById('home'), view = document.getElementById('vi
 function open(k){ home.style.display='none'; view.classList.add('on');
   vtitle.textContent = spaces[k][0]; vtext.textContent = spaces[k][1]; back.focus(); }
 function close(){ view.classList.remove('on'); home.style.display=''; tiles[0].focus(); }
-tiles.forEach(t => t.onclick = () => open(t.dataset.go));
+tiles.forEach(t => t.onclick = () => t.dataset.go === 'jeux' ? location.href = 'jeux/index.html' : open(t.dataset.go));
 back.onclick = close;
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') return close();

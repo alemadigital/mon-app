@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jeux</title>
+<style>
+  :root { --bg:#0f1b2d; --card:#1c2c45; --text:#f4f1e8; --accent:#e9b949; --ok:#4caf7a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; min-height:100vh; }
+  header { padding:12px 20px; display:flex; gap:16px; align-items:center; }
+  h1 { margin:0; font-size:1.5rem; flex:1; }
+  .btn { background:var(--accent); color:#111; border:0; border-radius:10px; padding:10px 16px; font-size:1rem; cursor:pointer; }
+  .btn:focus { outline:3px solid #fff; }
+  #menu { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; padding:12px 20px; }
+  .tile { background:var(--card); color:var(--text); border:3px solid transparent; border-radius:16px; padding:28px 10px; font-size:1.3rem; cursor:pointer; }
+  .tile b { display:block; font-size:2.6rem; margin-bottom:6px; }
+  .tile:focus, .tile:hover { border-color:var(--accent); outline:none; }
+  .game { display:none; padding:8px 20px; text-align:center; }
+  .game.on { display:block; }
+  .score { font-size:1.2rem; margin:6px 0; }
+  canvas { background:#0a1322; border-radius:12px; max-width:100%; }
+  #mem { display:grid; grid-template-columns:repeat(4,80px); gap:10px; justify-content:center; margin-top:10px; }
+  .card { height:80px; border-radius:12px; border:0; font-size:2.4rem; background:var(--card); color:var(--text); cursor:pointer; }
+  .card.up { background:#2d4466; } .card.done { background:var(--ok); }
+  .card:focus { outline:3px solid var(--accent); }
+  #g2048 { display:grid; grid-template-columns:repeat(4,72px); gap:8px; justify-content:center; margin-top:10px; }
+  .cell { height:72px; border-radius:10px; background:var(--card); display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:700; }
+  .msg { font-size:1.3rem; color:var(--accent); min-height:1.6em; }
+  @media (max-width:500px){ #menu{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 Jeux</h1>
+  <button class="btn" id="back">← Retour (Échap)</button>
+</header>
+
+<div id="menu">
+  <button class="tile" data-g="snake"><b>🐍</b>Serpent</button>
+  <button class="tile" data-g="memory"><b>ب</b>Memory des lettres</button>
+  <button class="tile" data-g="t2048"><b>2048</b>2048</button>
+</div>
+
+<div class="game" id="snake">
+  <div class="score">Score : <span id="ss">0</span> · Record : <span id="sr">0</span></div>
+  <canvas id="sc" width="400" height="400"></canvas>
+  <div class="msg" id="sm">Flèches pour bouger · Espace pour recommencer</div>
+</div>
+
+<div class="game" id="memory">
+  <div class="score">Coups : <span id="mc">0</span></div>
+  <div class="msg" id="mm">Trouve les paires de lettres (flèches + Entrée)</div>
+  <div id="mem"></div>
+</div>
+
+<div class="game" id="t2048">
+  <div class="score">Score : <span id="ts">0</span></div>
+  <div class="msg" id="tm">Flèches pour pousser les nombres · Espace pour recommencer</div>
+  <div id="g2048"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let current = null;
+const tiles = [...document.querySelectorAll('.tile')];
+function store(k, v){ try { if (v === undefined) return +localStorage.getItem(k) || 0; localStorage.setItem(k, v); } catch(e){ return 0; } }
+
+function openGame(g){ $('menu').style.display='none'; $(g).classList.add('on'); current=g; starts[g](); }
+function goBack(){
+  if (current){ stops[current] && stops[current](); $(current).classList.remove('on'); current=null; $('menu').style.display=''; tiles[0].focus(); }
+  else location.href = '../index.html';
+}
+tiles.forEach(t => t.onclick = () => openGame(t.dataset.g));
+$('back').onclick = goBack;
+
+/* ---------- Serpent ---------- */
+let sn, dir, nextDir, food, timer, sScore;
+const N = 20, S = 20, ctx = $('sc').getContext('2d');
+function snakeStart(){
+  sn=[{x:10,y:10},{x:9,y:10},{x:8,y:10}]; dir=nextDir={x:1,y:0}; sScore=0; $('ss').textContent=0;
+  $('sr').textContent=store('snakeRec'); placeFood(); clearInterval(timer); timer=setInterval(snakeTick,140);
+  $('sm').textContent='Flèches pour bouger · Espace pour recommencer';
+}
+function placeFood(){ do { food={x:Math.random()*N|0,y:Math.random()*N|0}; } while(sn.some(p=>p.x==food.x&&p.y==food.y)); }
+function snakeTick(){
+  dir=nextDir; const h={x:(sn[0].x+dir.x+N)%N, y:(sn[0].y+dir.y+N)%N};
+  if (sn.some(p=>p.x==h.x&&p.y==h.y)){ clearInterval(timer); $('sm').textContent='Perdu ! Espace pour rejouer';
+    if (sScore>store('snakeRec')){ store('snakeRec',sScore); $('sr').textContent=sScore; } return; }
+  sn.unshift(h);
+  if (h.x==food.x&&h.y==food.y){ sScore++; $('ss').textContent=sScore; placeFood(); } else sn.pop();
+  ctx.fillStyle='#0a1322'; ctx.fillRect(0,0,400,400);
+  ctx.fillStyle='#e05a4f'; ctx.beginPath(); ctx.arc(food.x*S+10,food.y*S+10,8,0,7); ctx.fill();
+  sn.forEach((p,i)=>{ ctx.fillStyle=i?'#4caf7a':'#e9b949'; ctx.fillRect(p.x*S+1,p.y*S+1,S-2,S-2); });
+}
+function snakeKey(k){
+  const m={ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0}}[k];
+  if (m && (m.x!==-dir.x || m.y!==-dir.y)) nextDir=m;
+  if (k===' ') snakeStart();
+}
+
+/* ---------- Memory des lettres arabes ---------- */
+const LETTERS = ['ا','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي'];
+let cards, open1, lock, moves, found;
+function memStart(){
+  const pick = LETTERS.slice().sort(()=>Math.random()-.5).slice(0,8);
+  const deck = pick.concat(pick).sort(()=>Math.random()-.5);
+  moves=0; found=0; open1=null; lock=false; $('mc').textContent=0; $('mm').textContent='Trouve les paires de lettres (flèches + Entrée)';
+  $('mem').innerHTML=''; cards = deck.map((l,i)=>{ const b=document.createElement('button'); b.className='card'; b.textContent='?'; b.dataset.l=l;
+    b.onclick=()=>flip(b); $('mem').appendChild(b); return b; });
+  cards[0].focus();
+}
+function flip(b){
+  if (lock || b.classList.contains('up') || b.classList.contains('done')) return;
+  b.classList.add('up'); b.textContent=b.dataset.l;
+  if (!open1){ open1=b; return; }
+  moves++; $('mc').textContent=moves;
+  if (open1.dataset.l===b.dataset.l){ open1.classList.add('done'); b.classList.add('done'); open1=null; found++;
+    if (found===8) $('mm').textContent='Bravo ! Gagné en '+moves+' coups 🎉 (Espace pour rejouer)'; return; }
+  lock=true; const a=open1; open1=null;
+  setTimeout(()=>{ [a,b].forEach(c=>{c.classList.remove('up'); c.textContent='?';}); lock=false; }, 900);
+}
+function memKey(k){
+  if (k===' ') return memStart();
+  const i=cards.indexOf(document.activeElement); if (i<0) return cards[0].focus();
+  const m={ArrowRight:1,ArrowLeft:-1,ArrowDown:4,ArrowUp:-4}[k]; if (m) cards[(i+m+16)%16].focus();
+}
+
+/* ---------- 2048 ---------- */
+let grid, tScore;
+const COL={2:'#3b5478',4:'#46638c',8:'#c97b3d',16:'#d1693a',32:'#d4553a',64:'#d33f2f',128:'#cfb04a',256:'#cfa93a',512:'#cfa22a',1024:'#cf9b1a',2048:'#4caf7a'};
+function tStart(){ grid=Array(16).fill(0); tScore=0; add(); add(); draw2048(); $('tm').textContent='Flèches pour pousser les nombres · Espace pour recommencer'; }
+function add(){ const e=grid.map((v,i)=>v?-1:i).filter(i=>i>=0); if(e.length) grid[e[Math.random()*e.length|0]]=Math.random()<.9?2:4; }
+function draw2048(){ $('ts').textContent=tScore; $('g2048').innerHTML=grid.map(v=>`<div class="cell" style="background:${v?COL[v]||'#4caf7a':''}">${v||''}</div>`).join(''); }
+function slide(row){ let r=row.filter(v=>v); for(let i=0;i<r.length-1;i++) if(r[i]===r[i+1]){ r[i]*=2; tScore+=r[i]; r.splice(i+1,1); } while(r.length<4) r.push(0); return r; }
+function tKey(k){
+  if (k===' ') return tStart();
+  const lines={ArrowLeft:i=>[0,1,2,3].map(j=>i*4+j),ArrowRight:i=>[3,2,1,0].map(j=>i*4+j),ArrowUp:i=>[0,1,2,3].map(j=>j*4+i),ArrowDown:i=>[3,2,1,0].map(j=>j*4+i)}[k];
+  if (!lines) return; const before=grid.join();
+  for(let i=0;i<4;i++){ const idx=lines(i), r=slide(idx.map(x=>grid[x])); idx.forEach((x,j)=>grid[x]=r[j]); }
+  if (grid.join()!==before){ add(); draw2048(); }
+  if (grid.includes(2048)) $('tm').textContent='Bravo, 2048 ! 🎉';
+  else if (!grid.includes(0) && ![0,1,2,3].some(i=>[0,1,2].some(j=>grid[i*4+j]===grid[i*4+j+1]||grid[j*4+i]===grid[(j+1)*4+i]))) $('tm').textContent='Plus de coups ! Espace pour rejouer';
+}
+
+const starts={snake:snakeStart, memory:memStart, t2048:tStart};
+const stops={snake:()=>clearInterval(timer)};
+const keys={snake:snakeKey, memory:memKey, t2048:tKey};
+
+document.addEventListener('keydown', e=>{
+  if (e.key==='Escape') return goBack();
+  if (current){ if (e.key.startsWith('Arrow')||e.key===' ') e.preventDefault(); return keys[current](e.key); }
+  const i=tiles.indexOf(document.activeElement); if (i<0) return tiles[0].focus();
+  const m={ArrowRight:1,ArrowLeft:-1}[e.key]; if (m){ e.preventDefault(); tiles[(i+m+3)%3].focus(); }
+});
+tiles[0].focus();
+</script>
+</body>
+</html>
